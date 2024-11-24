@@ -1,0 +1,85 @@
+---
+title: "Materials Project - Batteries Analysis"
+author: "Mateusz Ollek"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+    theme: spacelab
+    number_sections: yes
+    df_print: kable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = FALSE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(fig.align = "center")
+```
+
+```{r libraries}
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(knitr)
+library(tidyr)
+```
+Raport wykonany w ramach kursu Zaawansowana eksploracja danych, na semestrze zimowym 2024/2025.
+
+# Executive summary
+
+# Problem
+
+Raport służy do analizy bazy danych materiałów wykorzystywanych w tworzeniu baterii.
+
+## Źródło danych
+
+Wykorzystane dane pochodzą z inicjatywy naukowej Departamentu Energii USA [Materials Project](https://next-gen.materialsproject.org/). Pobrane zostały ze strony kursu dnia *24.11.2024*.
+
+## Opis danych
+
+Zbiór danych składa się z następujących kolumn:
+
+ - `Battery ID` - identyfikator baterii.
+ - `Battery Formula` - wzór chemiczny materiału baterii.
+ - `Working Ion` - główny jon, który odpowiada za transport ładunku w baterii.
+ - `Formula Charge` - wzór chemiczny materiału baterii w stanie naładowanym.
+ - `Formula Discharge` - wzór chemiczny materiału baterii w stanie rozładowanym.
+ - `Max Delta Volume` - zmiana objętości w % dla danego kroku napięcia za pomocą wzoru: max(charge, discharge)/min(charge, discharge) -1.
+ - `Average Voltage` - średnie napięcie dla poszczególnego kroku napięcia.
+ - `Gravimetric Capacity` - pojemność grawimetryczna, czyli ilość energii na jednostkę masy (mAh/g).
+ - `Volumetric Capacity` - pojemność wolumetryczna, czyli ilość energii na jednostkę objętości (mAh/cm³).
+ - `Gravimetric Energy` - gęstość energii w odniesieniu do masy baterii (Wh/kg).
+ - `Volumetric Energy` - gęstość energii w odniesieniu do objętości baterii (Wh/L).
+ - `Atomic Fraction Charge` - udział atomowy składników w stanie naładowanym.
+ - `Atomic Fraction Discharge` - udział atomowy składników w stanie rozładowanym.
+ - `Stability Charge` - wskaźnik stabilności materiału w stanie naładowanym.
+ - `Stability Discharge` - wskaźnik stabilności materiału w stanie rozładowanym.
+ - `Steps` - liczba odrębnych kroków napięcia od pełnego naładowania do rozładowania, oparta na stabilnych stanach pośrednich.
+ - `Max Voltage Step` - maksymalna bezwzględna różnica między sąsiednimi krokami napięcia.
+
+Dane były przetworzone i wyczyszczone przez autorów ale upewniamy się że nie bedzie danych brakujących.
+```{r loadData, cache=TRUE}
+df <- read.csv("data/mp_batteries.csv", header = T)
+mp <- df[complete.cases(df),]
+```
+# Analiza
+
+## Podsumowanie danych
+
+Wyświetlenie wszystkich zmiennych oraz podstawowych statystyk. Dla wartości tekstowych zwrócone zostały: liczba unikalnych wortości i najczęstsza wartość.
+```{r summaryData}
+kable(head(mp[1:5]))
+summary_fun <- function(x){
+  mt <- table(x)
+  c(n_distinct(x), names(mt)[which.max(mt)])
+}
+sdf <- mapply(summary_fun, mp[1:5])
+rownames(sdf) <- c('Liczba unikalnych','Najczęstsza wartość')
+kable(sdf)
+
+kable(head(mp[6:11]))
+kable(summary(mp[6:11]))
+
+kable(head(mp[12:17]))
+kable(summary(mp[12:17]))
+```
