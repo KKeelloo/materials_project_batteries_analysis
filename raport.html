@@ -11,7 +11,7 @@
 
 <meta name="author" content="Mateusz Ollek" />
 
-<meta name="date" content="2024-11-24" />
+<meta name="date" content="2024-11-30" />
 
 <title>Materials Project - Batteries Analysis</title>
 
@@ -1301,6 +1301,83 @@ window.buildTabsets = function(tocID) {
 };
 
 </script>
+<script>
+window.initializeCodeFolding = function(show) {
+
+  // handlers for show-all and hide all
+  $("#rmd-show-all-code").click(function() {
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('show');
+    });
+  });
+  $("#rmd-hide-all-code").click(function() {
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('hide');
+    });
+  });
+
+  // index for unique code element ids
+  var currentIndex = 1;
+
+  // select all R code blocks
+  var rCodeBlocks = $('pre.r, pre.python, pre.bash, pre.sql, pre.cpp, pre.stan, pre.julia, pre.foldable');
+  rCodeBlocks.each(function() {
+    // skip if the block has fold-none class
+    if ($(this).hasClass('fold-none')) return;
+
+    // create a collapsable div to wrap the code in
+    var div = $('<div class="collapse r-code-collapse"></div>');
+    var showThis = (show || $(this).hasClass('fold-show')) && !$(this).hasClass('fold-hide');
+    var id = 'rcode-643E0F36' + currentIndex++;
+    div.attr('id', id);
+    $(this).before(div);
+    $(this).detach().appendTo(div);
+
+    // add a show code button right above
+    var showCodeText = $('<span>' + (showThis ? 'Hide' : 'Show') + '</span>');
+    var showCodeButton = $('<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm code-folding-btn pull-right float-right"></button>');
+    showCodeButton.append(showCodeText);
+    showCodeButton
+        .attr('data-toggle', 'collapse')
+        .attr('data-bs-toggle', 'collapse') // BS5
+        .attr('data-target', '#' + id)
+        .attr('data-bs-target', '#' + id)   // BS5
+        .attr('aria-expanded', showThis)
+        .attr('aria-controls', id);
+
+    var buttonRow = $('<div class="row"></div>');
+    var buttonCol = $('<div class="col-md-12"></div>');
+
+    buttonCol.append(showCodeButton);
+    buttonRow.append(buttonCol);
+
+    div.before(buttonRow);
+
+    // show the div if necessary
+    if (showThis) div.collapse('show');
+
+    // update state of button on show/hide
+    //   * Change text
+    //   * add a class for intermediate states styling
+    div.on('hide.bs.collapse', function () {
+      showCodeText.text('Show');
+      showCodeButton.addClass('btn-collapsing');
+    });
+    div.on('hidden.bs.collapse', function () {
+      showCodeButton.removeClass('btn-collapsing');
+    });
+    div.on('show.bs.collapse', function () {
+      showCodeText.text('Hide');
+      showCodeButton.addClass('btn-expanding');
+    });
+    div.on('shown.bs.collapse', function () {
+      showCodeButton.removeClass('btn-expanding');
+    });
+
+  });
+
+}
+</script>
 <style type="text/css">.hljs-literal {
 color: #990073;
 }
@@ -1424,6 +1501,9 @@ display: none;
 </style>
 
 <!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
 
 
 
@@ -1501,38 +1581,48 @@ border-radius: 0px;
 
 <div id="header">
 
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
 
 
 <h1 class="title toc-ignore">Materials Project - Batteries Analysis</h1>
 <h4 class="author">Mateusz Ollek</h4>
-<h4 class="date">2024-11-24</h4>
+<h4 class="date">2024-11-30</h4>
 
 </div>
 
 
-<pre class="r"><code>library(dplyr)
-library(ggplot2)
+<pre class="r fold-show"><code>library(ggplot2)
 library(plotly)
 library(knitr)
-library(tidyr)</code></pre>
+library(tidyr)
+library(dplyr)
+library(caret)
+library(tibble)</code></pre>
 <p>Raport wykonany w ramach kursu Zaawansowana eksploracja danych, na
 semestrze zimowym 2024/2025.</p>
-<div id="executive-summary" class="section level1" number="1">
-<h1><span class="header-section-number">1</span> Executive summary</h1>
+<div id="executive-summary" class="section level1">
+<h1>Executive summary</h1>
 </div>
-<div id="problem" class="section level1" number="2">
-<h1><span class="header-section-number">2</span> Problem</h1>
+<div id="problem" class="section level1">
+<h1>Problem</h1>
 <p>Raport służy do analizy bazy danych materiałów wykorzystywanych w
 tworzeniu baterii.</p>
-<div id="źródło-danych" class="section level2" number="2.1">
-<h2><span class="header-section-number">2.1</span> Źródło danych</h2>
+<div id="źródło-danych" class="section level2">
+<h2>Źródło danych</h2>
 <p>Wykorzystane dane pochodzą z inicjatywy naukowej Departamentu Energii
 USA <a href="https://next-gen.materialsproject.org/">Materials
 Project</a>. Pobrane zostały ze strony kursu dnia
 <em>24.11.2024</em>.</p>
 </div>
-<div id="opis-danych" class="section level2" number="2.2">
-<h2><span class="header-section-number">2.2</span> Opis danych</h2>
+<div id="opis-danych" class="section level2">
+<h2>Opis danych</h2>
 <p>Zbiór danych składa się z następujących kolumn:</p>
 <ul>
 <li><code>Battery ID</code> - identyfikator baterii.</li>
@@ -1571,21 +1661,20 @@ pośrednich.</li>
 <li><code>Max Voltage Step</code> - maksymalna bezwzględna różnica
 między sąsiednimi krokami napięcia.</li>
 </ul>
+</div>
+</div>
+<div id="czyszczenie-danych" class="section level1">
+<h1>Czyszczenie danych</h1>
 <p>Dane były przetworzone i wyczyszczone przez autorów ale upewniamy się
 że nie bedzie danych brakujących.</p>
 <pre class="r"><code>df &lt;- read.csv(&quot;data/mp_batteries.csv&quot;, header = T)
-mp &lt;- df[complete.cases(df),]</code></pre>
-</div>
-</div>
-<div id="analiza" class="section level1" number="3">
-<h1><span class="header-section-number">3</span> Analiza</h1>
-<div id="podsumowanie-danych" class="section level2" number="3.1">
-<h2><span class="header-section-number">3.1</span> Podsumowanie
-danych</h2>
+df &lt;- df[complete.cases(df),]</code></pre>
+<div id="podstawowe-statystyki" class="section level2">
+<h2>Podstawowe statystyki</h2>
 <p>Wyświetlenie wszystkich zmiennych oraz podstawowych statystyk. Dla
-wartości tekstowych zwrócone zostały: liczba unikalnych wortości i
+wartości tekstowych zwrócone zostały: liczba unikalnych wartości i
 najczęstsza wartość.</p>
-<pre class="r"><code>kable(head(mp[1:5]))</code></pre>
+<pre class="r"><code>kable(head(df[1:5]))</code></pre>
 <table>
 <colgroup>
 <col width="18%" />
@@ -1652,7 +1741,7 @@ najczęstsza wartość.</p>
   mt &lt;- table(x)
   c(n_distinct(x), names(mt)[which.max(mt)])
 }
-sdf &lt;- mapply(summary_fun, mp[1:5])
+sdf &lt;- mapply(summary_fun, df[1:5])
 rownames(sdf) &lt;- c(&#39;Liczba unikalnych&#39;,&#39;Najczęstsza wartość&#39;)
 kable(sdf)</code></pre>
 <table>
@@ -1693,7 +1782,7 @@ kable(sdf)</code></pre>
 </tr>
 </tbody>
 </table>
-<pre class="r"><code>kable(head(mp[6:11]))</code></pre>
+<pre class="r"><code>kable(head(df[6:11]))</code></pre>
 <table>
 <colgroup>
 <col width="15%" />
@@ -1764,7 +1853,7 @@ kable(sdf)</code></pre>
 </tr>
 </tbody>
 </table>
-<pre class="r"><code>kable(summary(mp[6:11]))</code></pre>
+<pre class="r"><code>kable(summary(df[6:11]))</code></pre>
 <table>
 <colgroup>
 <col width="2%" />
@@ -1843,7 +1932,7 @@ kable(sdf)</code></pre>
 </tr>
 </tbody>
 </table>
-<pre class="r"><code>kable(head(mp[12:17]))</code></pre>
+<pre class="r"><code>kable(head(df[12:17]))</code></pre>
 <table>
 <colgroup>
 <col width="21%" />
@@ -1914,7 +2003,7 @@ kable(sdf)</code></pre>
 </tr>
 </tbody>
 </table>
-<pre class="r"><code>kable(summary(mp[12:17]))</code></pre>
+<pre class="r"><code>kable(summary(df[12:17]))</code></pre>
 <table>
 <colgroup>
 <col width="2%" />
@@ -1994,6 +2083,144 @@ kable(sdf)</code></pre>
 </tbody>
 </table>
 </div>
+<div id="wartości-odstające" class="section level2">
+<h2>Wartości odstające</h2>
+<p>Na podstawie podstawowych statystyk można stwierdzić, że istnieją
+wartości odstające (np. Gravimetric.Capacity, Volumetric.Capacity) oraz
+że część wartości została wprowadzona lub zmierzona niepoprawnie
+(Average.Voltage) Wartości odstające zostaną usunięte przy użyciu
+<code>z-score</code>.</p>
+<pre class="r"><code>z_threshold &lt;- 2.5
+outliers_threshold &lt;- df %&gt;% 
+  select_if(is.numeric) %&gt;% 
+  summarise(across(everything(), list(
+    &quot;odcięcie dolne&quot; = ~ -z_threshold * sd(.x) + mean(.x),
+    &quot;odcięcie górne&quot; = ~ z_threshold * sd(.x) + mean(.x)
+  ))) %&gt;%
+  pivot_longer(
+    cols = everything(),
+    names_to = c(&quot;column_name&quot;,&quot;.value&quot;),
+    names_pattern = &quot;(.*)_(.*)&quot;
+  )
+outliers_threshold &lt;- outliers_threshold %&gt;%
+  column_to_rownames(var=&#39;column_name&#39;)
+
+outliers_count &lt;- df %&gt;%
+  select_if(is.numeric) %&gt;% 
+  summarise(across(everything(), 
+            list(
+              outliers_count = ~ sum(abs(scale(.x)) &gt; z_threshold))
+  )) %&gt;%
+  pivot_longer(
+    cols = everything(),
+    names_to = &quot;column_name&quot;,
+    values_to = &quot;liczba odciętych&quot;
+  )
+
+outliers_count &lt;- outliers_count %&gt;%
+  column_to_rownames(var=&#39;column_name&#39;)
+
+cbind(outliers_threshold, outliers_count) %&gt;% knitr::kable()</code></pre>
+<table>
+<colgroup>
+<col width="35%" />
+<col width="20%" />
+<col width="20%" />
+<col width="23%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">odcięcie dolne</th>
+<th align="right">odcięcie górne</th>
+<th align="right">liczba odciętych</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Max.Delta.Volume</td>
+<td align="right">-16.7542800</td>
+<td align="right">17.5049073</td>
+<td align="right">11</td>
+</tr>
+<tr class="even">
+<td align="left">Average.Voltage</td>
+<td align="right">-1.4719977</td>
+<td align="right">7.6382832</td>
+<td align="right">35</td>
+</tr>
+<tr class="odd">
+<td align="left">Gravimetric.Capacity</td>
+<td align="right">-253.9932134</td>
+<td align="right">570.5749923</td>
+<td align="right">54</td>
+</tr>
+<tr class="even">
+<td align="left">Volumetric.Capacity</td>
+<td align="right">-799.0087158</td>
+<td align="right">2020.2569133</td>
+<td align="right">78</td>
+</tr>
+<tr class="odd">
+<td align="left">Gravimetric.Energy</td>
+<td align="right">-433.5139440</td>
+<td align="right">1321.7267043</td>
+<td align="right">83</td>
+</tr>
+<tr class="even">
+<td align="left">Volumetric.Energy</td>
+<td align="right">-1580.4480057</td>
+<td align="right">4908.5448331</td>
+<td align="right">96</td>
+</tr>
+<tr class="odd">
+<td align="left">Atomic.Fraction.Charge</td>
+<td align="right">-0.1815453</td>
+<td align="right">0.2612568</td>
+<td align="right">104</td>
+</tr>
+<tr class="even">
+<td align="left">Atomic.Fraction.Discharge</td>
+<td align="right">-0.1418586</td>
+<td align="right">0.4600131</td>
+<td align="right">120</td>
+</tr>
+<tr class="odd">
+<td align="left">Stability.Charge</td>
+<td align="right">-0.8031274</td>
+<td align="right">1.0882606</td>
+<td align="right">61</td>
+</tr>
+<tr class="even">
+<td align="left">Stability.Discharge</td>
+<td align="right">-0.7587238</td>
+<td align="right">1.0028671</td>
+<td align="right">89</td>
+</tr>
+<tr class="odd">
+<td align="left">Steps</td>
+<td align="right">0.0077141</td>
+<td align="right">2.3264620</td>
+<td align="right">99</td>
+</tr>
+<tr class="even">
+<td align="left">Max.Voltage.Step</td>
+<td align="right">-1.4248803</td>
+<td align="right">1.7254598</td>
+<td align="right">116</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>count_before &lt;- nrow(df)
+df &lt;- df %&gt;% filter(if_all(where(~ is.numeric(.)), ~ abs(scale(.)) &lt; z_threshold))
+count_after &lt;- nrow(df)</code></pre>
+<p>Dla najlepszej jakości danych wybrano próg <strong>2.5</strong>,
+przed wyczyszczeniem liczba wierszy wynosiła: <strong>4351</strong>,a po
+<strong>3797</strong>.</p>
+</div>
+</div>
+<div id="analiza" class="section level1">
+<h1>Analiza</h1>
 </div>
 
 
@@ -2031,6 +2258,11 @@ $(document).ready(function () {
 </script>
 
 <!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
 
 <script>
 $(document).ready(function ()  {

@@ -7,8 +7,8 @@ output:
     toc: yes
     toc_float: yes
     theme: spacelab
-    number_sections: yes
     df_print: kable
+    code_folding: "hide"
 ---
 
 ```{r setup, include=FALSE}
@@ -16,12 +16,14 @@ knitr::opts_chunk$set(echo = TRUE, error = FALSE, warning = FALSE, message = FAL
 knitr::opts_chunk$set(fig.align = "center")
 ```
 
-```{r libraries}
-library(dplyr)
+```{r libraries, class.source="fold-show"}
 library(ggplot2)
 library(plotly)
 library(knitr)
 library(tidyr)
+library(dplyr)
+library(caret)
+library(tibble)
 ```
 Raport wykonany w ramach kursu Zaawansowana eksploracja danych, na semestrze zimowym 2024/2025.
 
@@ -56,30 +58,77 @@ Zbiór danych składa się z następujących kolumn:
  - `Stability Discharge` - wskaźnik stabilności materiału w stanie rozładowanym.
  - `Steps` - liczba odrębnych kroków napięcia od pełnego naładowania do rozładowania, oparta na stabilnych stanach pośrednich.
  - `Max Voltage Step` - maksymalna bezwzględna różnica między sąsiednimi krokami napięcia.
+ 
+# Czyszczenie danych
 
 Dane były przetworzone i wyczyszczone przez autorów ale upewniamy się że nie bedzie danych brakujących.
 ```{r loadData, cache=TRUE}
 df <- read.csv("data/mp_batteries.csv", header = T)
-mp <- df[complete.cases(df),]
+df <- df[complete.cases(df),]
 ```
-# Analiza
 
-## Podsumowanie danych
+## Podstawowe statystyki
 
-Wyświetlenie wszystkich zmiennych oraz podstawowych statystyk. Dla wartości tekstowych zwrócone zostały: liczba unikalnych wortości i najczęstsza wartość.
-```{r summaryData}
-kable(head(mp[1:5]))
+Wyświetlenie wszystkich zmiennych oraz podstawowych statystyk. Dla wartości tekstowych zwrócone zostały: liczba unikalnych wartości i najczęstsza wartość.
+```{r summaryData, cache=TRUE}
+kable(head(df[1:5]))
 summary_fun <- function(x){
   mt <- table(x)
   c(n_distinct(x), names(mt)[which.max(mt)])
 }
-sdf <- mapply(summary_fun, mp[1:5])
+sdf <- mapply(summary_fun, df[1:5])
 rownames(sdf) <- c('Liczba unikalnych','Najczęstsza wartość')
 kable(sdf)
 
-kable(head(mp[6:11]))
-kable(summary(mp[6:11]))
+kable(head(df[6:11]))
+kable(summary(df[6:11]))
 
-kable(head(mp[12:17]))
-kable(summary(mp[12:17]))
+kable(head(df[12:17]))
+kable(summary(df[12:17]))
 ```
+
+## Wartości odstające
+
+Na podstawie podstawowych statystyk można stwierdzić, że istnieją wartości odstające (np. Gravimetric.Capacity, Volumetric.Capacity) oraz że część wartości została wprowadzona lub zmierzona niepoprawnie (Average.Voltage) Wartości odstające zostaną usunięte przy użyciu `z-score`.
+```{r outliers}
+z_threshold <- 2.5
+outliers_threshold <- df %>% 
+  select_if(is.numeric) %>% 
+  summarise(across(everything(), list(
+    "odcięcie dolne" = ~ -z_threshold * sd(.x) + mean(.x),
+    "odcięcie górne" = ~ z_threshold * sd(.x) + mean(.x)
+  ))) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = c("column_name",".value"),
+    names_pattern = "(.*)_(.*)"
+  )
+outliers_threshold <- outliers_threshold %>%
+  column_to_rownames(var='column_name')
+
+outliers_count <- df %>%
+  select_if(is.numeric) %>% 
+  summarise(across(everything(), 
+            list(
+              outliers_count = ~ sum(abs(scale(.x)) > z_threshold))
+  )) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "column_name",
+    values_to = "liczba odciętych"
+  )
+
+outliers_count <- outliers_count %>%
+  column_to_rownames(var='column_name')
+
+cbind(outliers_threshold, outliers_count) %>% knitr::kable()
+count_before <- nrow(df)
+df <- df %>% filter(if_all(where(~ is.numeric(.)), ~ abs(scale(.)) < z_threshold))
+count_after <- nrow(df)
+```
+Dla najlepszej jakości danych wybrano próg **`r z_threshold`**, przed wyczyszczeniem liczba wierszy wynosiła: **`r count_before`**, a po **`r count_after`**.
+
+# Analiza
+
+Poniżej przedstawiono rozkład poszczególnych wartości oraz relacji między wybranymi parami
+
