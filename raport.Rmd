@@ -147,9 +147,8 @@ ggplotly(p)
 ```{r analysis, cache=TRUE}
 present_variable <- function(data, column, binwidth, columnName) {
 p <- ggplot(data, aes(x=column)) +
-    geom_histogram(aes(y=after_stat(density)), binwidth=binwidth) + 
-    geom_density(color=alpha('black', 0.6)) + 
-    labs(x=columnName, y='Gęstość', title=paste('Rozkład parametru', columnName))
+    geom_histogram( binwidth=binwidth) + 
+    labs(x=columnName, y='Liczność', title=paste('Rozkład parametru', columnName))
   
 ggplotly(p)
 }
@@ -180,25 +179,26 @@ present_variable(df, df$"Volumetric.Energy", binwidth = 120, 'gęstość energii
 ```
 
 ```{r analysis_Atomic_Fraction_Charge, cache=TRUE}
-present_variable(df, df$"Atomic.Fraction.Charge", binwidth = 0.02, 'udział atomowy składników w stanie naładowanym')
+present_variable(df, df$"Atomic.Fraction.Charge", binwidth = 0.01, 'udział atomowy składników w stanie naładowanym')
 ```
 
 ```{r analysis_Atomic_Fraction_Discharge, cache=TRUE}
-present_variable(df, df$"Atomic.Fraction.Discharge", binwidth = 0.005, 'udział atomowy składników w stanie rozładowanym')
+present_variable(df, df$"Atomic.Fraction.Discharge", binwidth = 0.01, 'udział atomowy składników w stanie rozładowanym')
 ```
 
 ```{r analysis_Stability_Charge, cache=TRUE}
-present_variable(df, df$"Stability.Charge", binwidth = 0.01, 'Wskaźnik stabilności materiału w stanie naładowanym')
+present_variable(df, df$"Stability.Charge", binwidth = 0.01, 'wskaźnik stabilności materiału w stanie naładowanym')
 ```
 
 ```{r analysis_Stability_Discharge, cache=TRUE}
-present_variable(df, df$"Stability.Discharge", binwidth = 0.01, 'Wskaźnik stabilności materiału w stanie rozładowanym')
+present_variable(df, df$"Stability.Discharge", binwidth = 0.01, 'wskaźnik stabilności materiału w stanie rozładowanym')
 ```
 
 ```{r analysis_Steps, cache=TRUE}
-present_variable(df, df$"Steps", binwidth = 0.5, 'Liczba odrębnych kroków napięcia od pełnego naładowania do rozładowania')
+present_variable(df, df$"Steps", binwidth = 0.5, 'liczba odrębnych kroków napięcia od pełnego naładowania do rozładowania')
 ```
 
 ```{r analysis_Max_Voltage_Step, cache=TRUE}
-present_variable(df, df$"Max.Voltage.Step", binwidth = 1, 'Maksymalna bezwzględna różnica między sąsiednimi krokami napięcia')
+present_variable(df, df$"Max.Voltage.Step", binwidth = 1, 'maksymalna bezwzględna różnica między sąsiednimi krokami napięcia')
 ```
+
