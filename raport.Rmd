@@ -6,7 +6,6 @@ output:
   html_document:
     toc: yes
     toc_float: yes
-    theme: spacelab
     df_print: kable
     code_folding: "hide"
 ---
@@ -24,7 +23,7 @@ library(ggplot2)
 library(plotly)
 library(caret)
 library(tibble)
-library(ggpubr)
+library(reshape2)
 ```
 Raport wykonany w ramach kursu Zaawansowana eksploracja danych, na semestrze zimowym 2024/2025.
 
@@ -145,9 +144,10 @@ ggplotly(p)
 
 
 ```{r analysis, cache=TRUE}
-present_variable <- function(data, column, binwidth, columnName) {
-p <- ggplot(data, aes(x=column)) +
-    geom_histogram( binwidth=binwidth) + 
+present_variable <- function(df, column, binwidth, columnName) {
+p <- ggplot(df, aes(x=column)) +
+    geom_histogram( binwidth=binwidth) +
+    theme_minimal()+
     labs(x=columnName, y='Liczność', title=paste('Rozkład parametru', columnName))
   
 ggplotly(p)
@@ -202,3 +202,57 @@ present_variable(df, df$"Steps", binwidth = 0.5, 'liczba odrębnych kroków napi
 present_variable(df, df$"Max.Voltage.Step", binwidth = 1, 'maksymalna bezwzględna różnica między sąsiednimi krokami napięcia')
 ```
 
+### Korelacja
+
+Poniżej przedstawiona została korelacja Pearsona dla atrybutów numerycznych.
+
+```{r pearson, cache=TRUE}
+cor_matrix <- df %>% 
+  select_if(is.numeric) %>%
+  cor(method = "pearson")
+
+cor_matrix_melted <- melt(cor_matrix)
+
+p <- ggplot(data = cor_matrix_melted, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limits = c(-1, 1), 
+                       name = "Korelacja\nPearsona") +
+  geom_text(aes(label = sprintf("%.2f", value)), size = 3) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), axis.title = element_blank()) +
+  labs(title = "Korelacja",fill = "Korelacja")
+ggplotly(p)
+```
+
+Poniżej przedstawiono wykresy zależności dla wybranych par atrybutów o wysokiej korelacji.
+
+```{r plot_correlation, cache=TRUE}
+plot_correlation <- function(df, var1, var2) {
+  p <- ggplot(df, aes_string(x = var1, y = var2)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  geom_smooth(method = "lm", se = TRUE, color = "red", fill = "pink") +
+  theme_minimal() +
+  labs(
+    title = paste("Zależność między", var1, "a", var2),
+    x = var1,
+    y = var2
+  )
+  ggplotly(p)
+}
+
+plot_correlation(df, "Gravimetric.Capacity", "Volumetric.Capacity")
+plot_correlation(df, "Gravimetric.Capacity", "Gravimetric.Energy")
+plot_correlation(df, "Gravimetric.Capacity", "Volumetric.Energy")
+plot_correlation(df, "Volumetric.Capacity", "Volumetric.Energy")
+plot_correlation(df, "Gravimetric.Energy", "Volumetric.Energy")
+plot_correlation(df, "Atomic.Fraction.Discharge", "Atomic.Fraction.Charge")
+```
+
+### Wnioski z analizy
+
+ * Większość baterii tworzonych jest na bazie Litu.
+ * Część atrybutów jest silnie skumulowana (Max.Voltage.Step, Steps).
+ * Przy części atrybutów można zaobserwować rozkład podobny do normalnego (Volumetric.Capacity, Gravimetric.Energy).
+ * Pary Volumetric.Capacity i Gravimetric.Capacity, Volumetric.Energy i Gravimetric.Energy, Atomic.Fraction.Discharge i Atomic.Fraction.Charge są silnie ze sobą skorelowane.
+ 
