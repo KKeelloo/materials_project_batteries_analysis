@@ -13,6 +13,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, error = FALSE, warning = FALSE, message = FALSE,  out.width = "100%")
 knitr::opts_chunk$set(fig.align = "center")
+
 ```
 
 ```{r libraries, class.source="fold-show"}
@@ -24,14 +25,15 @@ library(plotly)
 library(caret)
 library(tibble)
 library(reshape2)
+set.seed(111)
 ```
 Raport wykonany w ramach kursu Zaawansowana eksploracja danych, na semestrze zimowym 2024/2025.
 
-# Executive summary
+# Podsumowanie
 
-# Problem
+Raport służył do analizy bazy danych materiałów wykorzystywanych w tworzeniu baterii. Analiza wykazała silną korelację par `Volumetric.Capacity` i `Gravimetric.Capacity`, `Volumetric.Energy` i `Gravimetric.Energy` oraz `Atomic.Fraction.Discharge` i `Atomic.Fraction.Charge`. 
 
-Raport służy do analizy bazy danych materiałów wykorzystywanych w tworzeniu baterii.
+Stworzono również model predykcji wskaźnika stabilności materiału w stanie naładowanym. Zaobserwowano że `Volumetric.Capacity` jest znacznie ważniejszy od pozostałych atrybutów w ramach predykcji, a `Atomic.Fraction.Charge` jest ignorowany.
 
 ## Źródło danych
 
@@ -252,7 +254,64 @@ plot_correlation(df, "Atomic.Fraction.Discharge", "Atomic.Fraction.Charge")
 ### Wnioski z analizy
 
  * Większość baterii tworzonych jest na bazie Litu.
- * Część atrybutów jest silnie skumulowana (Max.Voltage.Step, Steps).
- * Przy części atrybutów można zaobserwować rozkład podobny do normalnego (Volumetric.Capacity, Gravimetric.Energy).
- * Pary Volumetric.Capacity i Gravimetric.Capacity, Volumetric.Energy i Gravimetric.Energy, Atomic.Fraction.Discharge i Atomic.Fraction.Charge są silnie ze sobą skorelowane.
+ * Część atrybutów jest silnie skumulowana (`Max.Voltage.Step`, `Steps`).
+ * Przy części atrybutów można zaobserwować rozkład podobny do normalnego (`Volumetric.Capacity`, `Gravimetric.Energy`).
+ * Pary `Volumetric.Capacity` i `Gravimetric.Capacity`, `Volumetric.Energy` i `Gravimetric.Energy`, `Atomic.Fraction.Discharge` i `Atomic.Fraction.Charge` są silnie ze sobą skorelowane.
  
+# Predykcja
+
+### Przygotowanie zbioru
+Usunięte zostały atrybuty o wysokiej korelacji oraz niepotrzebne atrybuty tekstowe. `Working.Ion` został zamieniony z tekstu na factor.
+```{r redukcja-atrybutow, cache=TRUE}
+attributes_to_remove <- cor_matrix %>% findCorrelation(cutoff = 0.6, names = TRUE)
+df$Working.Ion <- as.numeric(factor(df$Working.Ion))
+df <- df %>% select(-c(attributes_to_remove, Battery.ID, Battery.Formula, Formula.Charge, Formula.Discharge, Stability.Discharge))
+```
+Ostatecznie pozostały atrybuty: `r colnames(df)`.
+
+Dane zostały podzielone na dwa zbiory:
+
+ * treningowy - uczenie (70% całego zbioru)
+ * testowy - ocenianie (30%)
+ 
+```{r podzial, cache=TRUE}
+idx_podzial <- createDataPartition(y=df$Stability.Charge, p=0.7, list = FALSE)
+
+training <- df[idx_podzial,]
+testing <- df[-idx_podzial,]
+```
+
+### Trenowanie
+
+Do stworzenia modelu wykorzystano `Robust Linear Model`, lepiej on sobie radzi z wartościami odstającymi.
+
+```{r training, cache=TRUE}
+ctrl <- trainControl(
+    method = "cv",
+    number = 10)
+
+rlm_fit <- train(
+  Stability.Charge ~ .,
+  data = training,
+  method = 'rlm',
+  trControl = ctrl
+)
+rlm_fit
+ggplotly(
+  ggplot(varImp(rlm_fit))+
+    theme_minimal()+
+    labs(title = "Ważność atrybutów", x = "atrybut", y = "ważność"))
+```
+
+Warto zauważyć że `Volumetric.Capacity` jest znacznie ważniejszy od pozostałych atrybutów a `Atomic.Fraction.Charge` jest ignorowany.
+
+### Predykcje na zbiorze testowym
+
+```{r, predykcje, cache = TRUE}
+predictions <- predict(rlm_fit, newdata = testing)
+post_resample <- postResample(pred = predictions,
+                              obs = testing$Stability.Charge)
+kable(post_resample, col.names = c("Metryka", "Wartość"), caption = "Ocena modelu")
+```
+
+Na podstawie wyników można stwierdzić, że model radzi sobie dobrze.
