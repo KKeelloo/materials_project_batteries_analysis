@@ -17,13 +17,14 @@ knitr::opts_chunk$set(fig.align = "center")
 ```
 
 ```{r libraries, class.source="fold-show"}
-library(ggplot2)
-library(plotly)
 library(knitr)
 library(tidyr)
 library(dplyr)
+library(ggplot2)
+library(plotly)
 library(caret)
 library(tibble)
+library(ggpubr)
 ```
 Raport wykonany w ramach kursu Zaawansowana eksploracja danych, na semestrze zimowym 2024/2025.
 
@@ -90,8 +91,8 @@ kable(summary(df[12:17]))
 ## Wartości odstające
 
 Na podstawie podstawowych statystyk można stwierdzić, że istnieją wartości odstające (np. Gravimetric.Capacity, Volumetric.Capacity) oraz że część wartości została wprowadzona lub zmierzona niepoprawnie (Average.Voltage) Wartości odstające zostaną usunięte przy użyciu `z-score`.
-```{r outliers}
-z_threshold <- 2.5
+```{r outliers, cache=TRUE}
+z_threshold <- 3
 outliers_threshold <- df %>% 
   select_if(is.numeric) %>% 
   summarise(across(everything(), list(
@@ -130,5 +131,74 @@ Dla najlepszej jakości danych wybrano próg **`r z_threshold`**, przed wyczyszc
 
 # Analiza
 
-Poniżej przedstawiono rozkład poszczególnych wartości oraz relacji między wybranymi parami
+Poniżej przedstawiono rozkład poszczególnych wartości oraz relacji między wybranymi parami atrybutów.
 
+### Rozkłady parametrów
+
+```{r analysis_working_ion, cache=TRUE}
+p <- ggplot(df, aes(x = `Working.Ion`)) +
+    geom_bar(fill = "blue", color = "black") + 
+    labs(x='główny jon', y='Liczność', title='Rozkład parametru główny jon')
+
+ggplotly(p)
+```
+
+
+```{r analysis, cache=TRUE}
+present_variable <- function(data, column, binwidth, columnName) {
+p <- ggplot(data, aes(x=column)) +
+    geom_histogram(aes(y=after_stat(density)), binwidth=binwidth) + 
+    geom_density(color=alpha('black', 0.6)) + 
+    labs(x=columnName, y='Gęstość', title=paste('Rozkład parametru', columnName))
+  
+ggplotly(p)
+}
+```
+
+```{r analysis_Max_Delta_Volume, cache=TRUE}
+present_variable(df, df$"Max.Delta.Volume", binwidth = 0.01, 'maksymalna zmiana objętości')
+```
+
+```{r analysis_Average_Voltage, cache=TRUE}
+present_variable(df, df$"Average.Voltage", binwidth = 0.2, 'średnie napięcie')
+```
+
+```{r analysis_Gravimetric_Capacity, cache=TRUE}
+present_variable(df, df$"Gravimetric.Capacity", binwidth = 10, 'pojemność grawimetryczna')
+```
+
+```{r analysis_Volumetric_Capacity, cache=TRUE}
+present_variable(df, df$"Volumetric.Capacity", binwidth = 40, 'pojemność wolumetryczna')
+```
+
+```{r analysis_Gravimetric_Energy, cache=TRUE}
+present_variable(df, df$"Gravimetric.Energy", binwidth = 40, 'gęstość energii w odniesieniu do masy baterii')
+```
+
+```{r analysis_Volumetric_Energy, cache=TRUE}
+present_variable(df, df$"Volumetric.Energy", binwidth = 120, 'gęstość energii w odniesieniu do objętości baterii')
+```
+
+```{r analysis_Atomic_Fraction_Charge, cache=TRUE}
+present_variable(df, df$"Atomic.Fraction.Charge", binwidth = 0.02, 'udział atomowy składników w stanie naładowanym')
+```
+
+```{r analysis_Atomic_Fraction_Discharge, cache=TRUE}
+present_variable(df, df$"Atomic.Fraction.Discharge", binwidth = 0.005, 'udział atomowy składników w stanie rozładowanym')
+```
+
+```{r analysis_Stability_Charge, cache=TRUE}
+present_variable(df, df$"Stability.Charge", binwidth = 0.01, 'Wskaźnik stabilności materiału w stanie naładowanym')
+```
+
+```{r analysis_Stability_Discharge, cache=TRUE}
+present_variable(df, df$"Stability.Discharge", binwidth = 0.01, 'Wskaźnik stabilności materiału w stanie rozładowanym')
+```
+
+```{r analysis_Steps, cache=TRUE}
+present_variable(df, df$"Steps", binwidth = 0.5, 'Liczba odrębnych kroków napięcia od pełnego naładowania do rozładowania')
+```
+
+```{r analysis_Max_Voltage_Step, cache=TRUE}
+present_variable(df, df$"Max.Voltage.Step", binwidth = 1, 'Maksymalna bezwzględna różnica między sąsiednimi krokami napięcia')
+```
